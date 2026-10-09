@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kartenpreis-Vergleich · Cardmarket vs. TCGplayer</title>
+<style>
+  :root {
+    --bg: #0f1218; --panel: #171c25; --panel2: #1e2430; --border: #2a3242;
+    --text: #e6e9ef; --muted: #8b95a7; --accent: #5b9dff; --good: #3ecf8e;
+    --good-bg: rgba(62,207,142,.15); --bad: #ff6b6b; --bad-bg: rgba(255,107,107,.12);
+    --warn: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding: 16px 24px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0; font-size: 20px; }
+  header h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+  .fx { display: flex; align-items: center; gap: 8px; }
+  .fx input { width: 90px; }
+  .fx .muted { font-size: 12px; }
+  nav.tabs { display: flex; gap: 4px; padding: 0 24px; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav.tabs button { background: none; border: none; color: var(--muted); padding: 12px 16px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav.tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+  main { padding: 20px 24px 60px; max-width: 1500px; margin: 0 auto; }
+  input, select, button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
+  input:focus, select:focus { outline: 1px solid var(--accent); }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.small { padding: 3px 8px; font-size: 12px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .grow { flex: 1 1 260px; }
+  .muted { color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 15px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  label.f input, label.f select { color: var(--text); }
+  label.chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .status { margin: 10px 0; color: var(--muted); min-height: 20px; }
+  .status.err { color: var(--bad); }
+  .status.busy::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .setlist { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 6px; background: var(--panel2); margin: 8px 0; }
+  .setlist label { display: flex; gap: 8px; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
+  .setlist label:hover { background: var(--panel); }
+  .setlist .d { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .tableinfo { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; color: var(--muted); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; background: var(--panel); }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  th { position: sticky; top: 0; background: var(--panel2); font-weight: 600; font-size: 12px; color: var(--muted); white-space: nowrap; user-select: none; }
+  th[data-k] { cursor: pointer; }
+  th.sorted { color: var(--text); }
+  td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .thumb { height: 44px; border-radius: 3px; display: block; cursor: zoom-in; }
+  .cname { font-weight: 600; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .pos { color: var(--good); }
+  .neg { color: var(--bad); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+  .pill.hot { background: var(--good); color: #062; }
+  .pill.up { background: var(--good-bg); color: var(--good); }
+  .pill.down { background: var(--bad-bg); color: var(--bad); }
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-right: 6px; vertical-align: 1px; }
+  .badge.mtg { background: #7a4cc2; }
+  .badge.pkm { background: #c29a1c; color: #000; }
+  .links a { margin-right: 8px; white-space: nowrap; }
+  #preview { position: fixed; width: 250px; border-radius: 12px; pointer-events: none; z-index: 100; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .formula { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--panel2); padding: 10px; border-radius: 6px; color: var(--muted); white-space: pre-wrap; }
+  .help p, .help li { color: #c9cfda; max-width: 900px; }
+  .note { border-left: 3px solid var(--warn); padding: 8px 12px; background: rgba(245,196,81,.07); border-radius: 4px; margin: 10px 0; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+</style>
+</head>
+<body>
+<div id="jsWarn" style="background:#7a1f1f;color:#fff;padding:12px 24px;font-weight:600">
+  ⚠ JavaScript wird hier blockiert – die Seite funktioniert so nicht. Bitte die Datei herunterladen (Strg+S / Cmd+S) und lokal per Doppelklick öffnen.
+</div>
+
+<header>
+  <h1>🃏 Cardmarket ⇄ TCGplayer <small>Einzelkartenpreise · Magic & Pokémon · nur englische Karten</small></h1>
+  <div class="fx">
+    <span>1 € =</span>
+    <input id="fxRate" type="number" step="0.0001" min="0.1" title="Wechselkurs (manuell überschreibbar)">
+    <span>$</span>
+    <button id="fxReload" class="small" title="Kurs neu laden">↻</button>
+    <span id="fxInfo" class="muted"></span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="search" class="active">🔎 Kartensuche</button>
+  <button data-tab="arb">💰 Arbitrage-Finder</button>
+  <button data-tab="settings">⚙️ Kosten & Einstellungen</button>
+  <button data-tab="help">ℹ️ Info</button>
+</nav>
+
+<main>
+  <!-- ============ SEARCH ============ -->
+  <section id="tab-search">
+    <div class="card">
+      <form id="searchForm" class="row">
+        <select id="searchGame">
+          <option value="mtg">Magic: The Gathering</option>
+          <option value="pkm">Pokémon</option>
+        </select>
+        <input id="searchTerm" class="grow" placeholder="Kartenname, z.B. „Sol Ring“ oder „Charizard ex“" required>
+        <label class="chk"><input type="checkbox" id="searchVariants" checked> Foil / Reverse Holo zeigen</label>
+        <button class="primary">Suchen</button>
+      </form>
+      <div class="muted" style="margin-top:8px;font-size:12px">
+        Tipp: Bei Magic funktioniert auch <a href="https://scryfall.com/docs/syntax" target="_blank" rel="noopener">Scryfall-Syntax</a> (z.B. <code>set:mh3 r:mythic</code>).
+      </div>
+    </div>
+    <div id="searchStatus" class="status"></div>
+    <div id="searchResults"></div>
+  </section>
+
+  <!-- ============ ARBITRAGE ============ -->
+  <section id="tab-arb" hidden>
+    <div class="cols">
+      <div class="card">
+        <h3><span class="badge mtg">MTG</span>Magic scannen</h3>
+        <div class="row">
+          <label class="f">Cardmarket ab €<input id="mtgMin" type="number" value="5" min="0" step="0.5" style="width:100px"></label>
+          <label class="f">bis € (leer = egal)<input id="mtgMax" type="number" min="0" step="1" style="width:100px"></label>
+          <label class="f">Max. Seiten (à 175)<input id="mtgPages" type="number" value="10" min="1" max="100" style="width:100px"></label>
+        </div>
+        <label class="f" style="margin-top:10px">Zusatzfilter (Scryfall-Syntax, optional)
+          <input id="mtgExtra" placeholder="z.B. set:otj  oder  f:commander  oder  r:mythic">
+        </label>
+        <div class="row" style="margin-top:12px">
+          <button id="mtgScan" class="primary">Magic scannen</button>
+          <span class="muted" style="font-size:12px">Teuerste Karten zuerst. Preise via Scryfall (täglich aktualisiert).</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge pkm">PKM</span>Pokémon scannen</h3>
+        <div class="row">
+          <input id="setFilter" class="grow" placeholder="Sets filtern…">
+          <button id="setsNewest" class="small" type="button">Neueste 3</button>
+          <button id="setsNone" class="small" type="button">Keine</button>
+        </div>
+        <div id="setList" class="setlist"><span class="muted">Sets werden geladen…</span></div>
+        <label class="f">Zusatzfilter (pokemontcg.io-Syntax, optional)
+          <input id="pkmExtra" placeholder='z.B. rarity:"Special Illustration Rare"'>
+        </label>
+        <div class="row" style="margin-top:12px">
+          <button id="pkmScan" class="primary">Ausgewählte Sets scannen</button>
+          <span id="setCount" class="muted" style="font-size:12px"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Filter für Vorschläge („auf Cardmarket deutlich teurer als auf TCGplayer“)</h3>
+      <div class="row">
+        <label class="f">CM mind. % teurer<input id="fMinPct" type="number" value="30" step="5" style="width:110px"></label>
+        <label class="f">CM-Preis mind. €<input id="fMinCm" type="number" value="3" min="0" step="1" style="width:110px"></label>
+        <label class="f">Differenz mind. €<input id="fMinDiff" type="number" value="2" step="1" style="width:110px"></label>
+        <label class="f">Spiel
+          <select id="fGame"><option value="">Beide</option><option value="mtg">Magic</option><option value="pkm">Pokémon</option></select>
+        </label>
+        <label class="chk"><input type="checkbox" id="fOnlyProfit"> nur mit Gewinn nach Import & Gebühren</label>
+        <label class="chk"><input type="checkbox" id="arbVariants" checked> Foil / Reverse Holo einbeziehen</label>
+        <span style="flex:1"></span>
+        <button id="arbStop" type="button" disabled>Stopp</button>
+        <button id="arbClear" type="button">Ergebnisse leeren</button>
+      </div>
+    </div>
+
+    <div id="arbStatus" class="status"></div>
+    <div id="arbResults"></div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="tab-settings" hidden>
+    <div class="card">
+      <h3>Kostenmodell für „Netto nach Import“ (Kauf auf TCGplayer → Verkauf auf Cardmarket)</h3>
+      <div class="settings-grid">
+        <label class="f">Cardmarket-Verkaufsgebühr (%)<input data-setting="cmFee" type="number" step="0.5" min="0"></label>
+        <label class="f">US Sales Tax auf TCGplayer (%)<input data-setting="salesTax" type="number" step="0.5" min="0"></label>
+        <label class="f">Versand/Weiterleitung pro Karte ($)<input data-setting="shipUSD" type="number" step="0.1" min="0"></label>
+        <label class="f">Zoll (%)<input data-setting="duty" type="number" step="0.1" min="0"></label>
+        <label class="f">Einfuhrumsatzsteuer (%)<input data-setting="vat" type="number" step="1" min="0"></label>
+        <label class="f">Aufschlag Währungsumrechnung (%)<input data-setting="fxFee" type="number" step="0.1" min="0"></label>
+      </div>
+      <p class="muted" style="margin-top:14px">Formel:</p>
+      <div class="formula">Einkauf €  = (TCG-Preis $ × (1 + Sales Tax) + Versand $) ÷ Kurs × (1 + Umrechnungsaufschlag)
+Einstand € = Einkauf € × (1 + Zoll) × (1 + EUSt)
+Erlös €    = Cardmarket-Preis € × (1 − CM-Gebühr)
+Netto €    = Erlös € − Einstand €</div>
+    </div>
+
+    <div class="card">
+      <h3>Preisbasis (Pokémon)</h3>
+      <div class="settings-grid">
+        <label class="f">Cardmarket-Preis
+          <select data-setting="cmBasis">
+            <option value="trend">Trendpreis</option>
+            <option value="avg30">30-Tage-Durchschnitt</option>
+            <option value="avg7">7-Tage-Durchschnitt</option>
+            <option value="avg1">1-Tages-Durchschnitt</option>
+            <option value="low">Ab-Preis (günstigstes Angebot)</option>
+          </select>
+        </label>
+        <label class="f">TCGplayer-Preis
+          <select data-setting="tcgBasis">
+            <option value="market">Market Price</option>
+            <option value="low">Low</option>
+            <option value="mid">Mid</option>
+          </select>
+        </label>
+        <label class="f">pokemontcg.io API-Key (optional, höhere Limits)<input data-setting="pkmKey" type="text" placeholder="kostenlos auf dev.pokemontcg.io"></label>
+      </div>
+      <p class="muted" style="font-size:12px">Bei Magic liefert Scryfall genau einen Wert pro Seite: Cardmarket-Trendpreis bzw. TCGplayer-Market-Price.</p>
+      <button id="resetSettings" type="button">Auf Standard zurücksetzen</button>
+    </div>
+  </section>
+
+  <!-- ============ HELP ============ -->
+  <section id="tab-help" hidden class="help">
+    <div class="card">
+      <h3>Was macht diese Seite?</h3>
+      <p>Sie vergleicht Einzelkartenpreise englischer Karten zwischen <b>Cardmarket</b> (EU, €) und <b>TCGplayer</b> (USA, $) und rechnet mit dem aktuellen EZB-Kurs um. Im <b>Arbitrage-Finder</b> werden Karten vorgeschlagen, die auf Cardmarket deutlich teurer sind als auf TCGplayer – also Kandidaten für „in den USA kaufen, in Europa verkaufen“.</p>
+      <h3>Datenquellen</h3>
+      <ul>
+        <li><b>Magic:</b> <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall API</a> – enthält pro Druck den TCGplayer-Market-Price (USD) und den Cardmarket-Trendpreis (EUR). Gefiltert auf <code>lang:en</code>.</li>
+        <li><b>Pokémon:</b> <a href="https://pokemontcg.io" target="_blank" rel="noopener">Pokémon TCG API</a> – enthält nur englische Karten, mit TCGplayer- und Cardmarket-Preisen.</li>
+        <li><b>Wechselkurs:</b> <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter</a> (offizielle EZB-Referenzkurse), oben rechts manuell überschreibbar.</li>
+      </ul>
+      <h3>Wichtige Hinweise</h3>
+      <div class="note">Die Preise werden von den Quellen etwa <b>einmal täglich</b> aktualisiert. Vor jedem Kauf die echten Angebote über die Links „CM“ / „TCG“ prüfen.</div>
+      <div class="note">Der Cardmarket-Preisguide unterscheidet <b>nicht nach Sprache</b> – der Trendpreis mischt also z.B. englische, deutsche und japanische Exemplare. Der CM-Link setzt (wo möglich) den Filter „Englisch“, damit du die echten Preise für englische Karten siehst.</div>
+      <div class="note">Viele TCGplayer-Händler versenden nicht international. Dann braucht man einen US-Weiterleitungsdienst – diese Kosten (und Zoll / 19 % Einfuhrumsatzsteuer) im Tab „Kosten & Einstellungen“ eintragen. Zollsatz für Sammelkarten bitte selbst prüfen (z.B. TARIC / zoll.de).</div>
+      <div class="note">Die Zuordnung der Varianten (Normal / Holo / Reverse Holo / Foil) ist eine bestmögliche Annahme aus den API-Daten und kann bei einzelnen Karten danebenliegen. Extreme Ausreißer (z.B. +500 %) sind oft Datenfehler.</div>
+    </div>
+  </section>
+</main>
+
+<footer>Keine Gewähr für Preise. Daten: Scryfall, pokemontcg.io, EZB via Frankfurter. Nicht mit Cardmarket oder TCGplayer verbunden.</footer>
+
+<img id="preview" hidden alt="">
+
+<script>
+'use strict';
+document.getElementById('jsWarn').remove();
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtEUR = v => v == null ? '–' : v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+const fmtUSD = v => v == null ? '–' : v.toLocaleString('de-DE', { style: 'currency', currency: 'USD' });
+const fmtPct = v => v == null ? '–' : (v > 0 ? '+' : '') + v.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' %';
+const num = (sel, def = 0) => { const v = parseFloat(String($(sel).value).replace(',', '.')); return Number.isFinite(v) ? v : def; };
+const pos = v => (typeof v === 'number' && v > 0) ? v : null;
+const debounce = (fn, ms = 200) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+async function getJSON(url, headers = {}, retries = 3, timeoutMs = 60000) {
+  for (let i = 0; ; i++) {
+    let res;
+    try {
+      res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    } catch (e) {
+      if (i >= retries) throw new Error(e.name === 'TimeoutError' ? 'Zeitüberschreitung' : 'Netzwerkfehler (' + e.message + ')');
+      await sleep(1000 * (i + 1));
+      continue;
+    }
+    if (res.status === 429 || res.status >= 500) {
+      if (i >= retries) throw new Error('Server antwortet nicht (HTTP ' + res.status + ')');
+      await sleep(2000 * (i + 1));
+      continue;
+    }
+    if (res.status === 404) return null; // Scryfall: no results
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const j = await res.json(); msg += ': ' + (j.details || j.error?.message || j.error || ''); } catch {}
+      throw new Error(msg);
+    }
+    return res.json();
+  }
+}
+
+/* ---------------- settings ---------------- */
+const DEFAULTS = { cmFee: 5, salesTax: 0, shipUSD: 0, duty: 0, vat: 19, fxFee: 0, cmBasis: 'trend', tcgBasis: 'market', pkmKey: '' };
+let settings = { ...DEFAULTS, ...safeParse(localStorage.getItem('cpc-settings')) };
+function safeParse(s) { try { return JSON.parse(s) || {}; } catch { return {}; } }
+function saveSettings() { localStorage.setItem('cpc-settings', JSON.stringify(settings)); }
+function fillSettings() { $$('[data-setting]').forEach(el => el.value = settings[el.dataset.setting]); }
+$$('[data-setting]').forEach(el => {
+  el.addEventListener('input', () => {
+    const k = el.dataset.setting;
+    settings[k] = (el.type === 'number') ? (parseFloat(el.value) || 0) : el.value;
+    saveSettings();
+    rerenderAll();
+  });
+});
+$('#resetSettings').addEventListener('click', () => { settings = { ...DEFAULTS }; saveSettings(); fillSettings(); rerenderAll(); });
+fillSettings();
+
+/* ---------------- exchange rate ---------------- */
+// Several free, CORS-enabled providers; tried in order until one answers.
+const FX_SOURCES = [
+  { name: 'EZB (Frankfurter)', url: 'https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD', parse: j => [j.rates.USD, j.date] },
+  { name: 'EZB (Frankfurter)', url: 'https://api.frankfurter.app/latest?from=EUR&to=USD', parse: j => [j.rates.USD, j.date] },
+  { name: 'currency-api', url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.min.json', parse: j => [j.eur.usd, j.date] },
+  { name: 'currency-api', url: 'https://latest.currency-api.pages.dev/v1/currencies/eur.min.json', parse: j => [j.eur.usd, j.date] },
+  { name: 'open.er-api.com', url: 'https://open.er-api.com/v6/latest/EUR', parse: j => [j.rates.USD, j.time_last_update_unix * 1000] },
+];
+const cachedFx = safeParse(localStorage.getItem('cpc-fx'));
+let fxRate = cachedFx.rate > 0 ? cachedFx.rate : 1.10;
+function fx() { const v = parseFloat($('#fxRate').value); return v > 0 ? v : fxRate; }
+const fmtDate = d => { const x = new Date(d); return isNaN(x) ? '' : x.toLocaleDateString('de-DE'); };
+async function loadFx() {
+  $('#fxInfo').textContent = 'Kurs wird geladen…';
+  for (const src of FX_SOURCES) {
+    try {
+      const j = await getJSON(src.url, {}, 0, 6000);
+      const [rate, date] = src.parse(j);
+      if (!(rate > 0.5 && rate < 2.5)) throw new Error('unplausibel');
+      fxRate = rate;
+      localStorage.setItem('cpc-fx', JSON.stringify({ rate, date, src: src.name }));
+      $('#fxRate').value = fxRate.toFixed(4);
+      $('#fxInfo').textContent = `✓ ${src.name}, Stand ${fmtDate(date)}`;
+      rerenderAll();
+      return;
+    } catch { /* try next source */ }
+  }
+  $('#fxRate').value = fxRate.toFixed(4);
+  $('#fxInfo').textContent = cachedFx.rate
+    ? `⚠ offline – letzter Kurs vom ${fmtDate(cachedFx.date)}`
+    : '⚠ Kurs nicht ladbar – bitte manuell eintragen';
+  rerenderAll();
+}
+$('#fxRate').addEventListener('input', debounce(() => { $('#fxInfo').textContent = 'manuell'; rerenderAll(); }));
+$('#fxReload').addEventListener('click', loadFx);
+setInterval(() => { if ($('#fxInfo').textContent !== 'manuell') loadFx(); }, 60 * 60 * 1000);
+
+/* ---------------- data sources ---------------- */
+// Scryfall asks for max ~10 requests/second.
+let lastScry = 0;
+async function scryThrottle() { const w = 120 - (Date.now() - lastScry); if (w > 0) await sleep(w); lastScry = Date.now(); }
+
+async function scryfallSearch(q, { order = 'eur', dir = 'desc', maxPages = 5, onPage, stop } = {}) {
+  let url = 'https://api.scryfall.com/cards/search?' + new URLSearchParams({ q, order, dir, unique: 'prints' });
+  const cards = []; let page = 0, total = 0;
+  while (url && page < maxPages && !(stop && stop())) {
+    await scryThrottle();
+    const j = await getJSON(url, { Accept: 'application/json' });
+    if (!j) break;
+    total = j.total_cards || 0;
+    cards.push(...(j.data || []));
+    page++;
+    onPage && onPage(page, cards.length, total);
+    url = j.has_more ? j.next_page : null;
+  }
+  return { cards, total };
+}
+
+const PKM = 'https://api.pokemontcg.io/v2';
+const pkmHeaders = () => settings.pkmKey ? { 'X-Api-Key': settings.pkmKey } : {};
+async function pkmCards(q, { maxPages = 4, onPage, stop } = {}) {
+  const cards = []; let page = 1, total = 0;
+  while (page <= maxPages && !(stop && stop())) {
+    const url = PKM + '/cards?' + new URLSearchParams({
+      q, page, pageSize: 250, orderBy: '-set.releaseDate',
+      select: 'id,name,number,rarity,set,images,tcgplayer,cardmarket',
+    });
+    const j = await getJSON(url, pkmHeaders());
+    if (!j) break;
+    cards.push(...(j.data || []));
+    total = j.totalCount || cards.length;
+    onPage && onPage(page, cards.length, total);
+    if (cards.length >= total || !(j.data || []).length) break;
+    page++;
+  }
+  return { cards, total };
+}
+function pkmNameQuery(term) {
+  const t = term.replace(/"/g, '').trim();
+  if (/[:]/.test(term)) return term; // user typed raw API syntax
+  return /\s/.test(t) ? `name:"${t}"` : `name:${t}*`;
+}
+
+/* ---------------- row building ---------------- */
+function cmLink(u) {
+  if (!u) return null;
+  try {
+    const x = new URL(u);
+    if (x.hostname.endsWith('cardmarket.com')) x.searchParams.set('language', '1'); // 1 = English
+    return x.toString();
+  } catch { return u; }
+}
+
+function mtgRows(c, variants) {
+  const p = c.prices || {};
+  const face = c.image_uris || c.card_faces?.[0]?.image_uris || {};
+  const base = {
+    game: 'mtg', name: c.name, set: c.set_name, setCode: (c.set || '').toUpperCase(), number: c.collector_number,
+    rarity: c.rarity, thumb: face.small, img: face.normal,
+    cmUrl: cmLink(c.purchase_uris?.cardmarket), tcgUrl: c.purchase_uris?.tcgplayer, infoUrl: c.scryfall_uri,
+  };
+  const out = [];
+  const cm = pos(+p.eur), tcg = pos(+p.usd);
+  if (cm != null || tcg != null) out.push({ ...base, variant: 'Normal', cm, tcg });
+  if (variants) {
+    const cmf = pos(+p.eur_foil), tcgf = pos(+p.usd_foil);
+    if (cmf != null || tcgf != null) out.push({ ...base, variant: 'Foil', cm: cmf, tcg: tcgf });
+    const tcge = pos(+p.usd_etched);
+    if (tcge != null) out.push({ ...base, variant: 'Etched Foil', cm: null, tcg: tcge });
+  }
+  return out;
+}
+
+// TCGplayer variant priority for the "main" printing (matched with CM trendPrice etc.)
+const TCG_MAIN = [
+  ['holofoil', 'Holo'], ['normal', 'Normal'], ['unlimitedHolofoil', 'Unlimited Holo'],
+  ['1stEditionHolofoil', '1st Ed. Holo'], ['unlimited', 'Unlimited'], ['1stEditionNormal', '1st Ed.'],
+];
+const CM_KEYS = {
+  main: { trend: 'trendPrice', avg30: 'avg30', avg7: 'avg7', avg1: 'avg1', low: 'lowPrice' },
+  rev: { trend: 'reverseHoloTrend', avg30: 'reverseHoloAvg30', avg7: 'reverseHoloAvg7', avg1: 'reverseHoloAvg1', low: 'reverseHoloLow' },
+};
+function pickTcg(v) { if (!v) return null; return pos(v[settings.tcgBasis]) ?? pos(v.market) ?? pos(v.mid); }
+function pickCm(cp, kind) {
+  const k = CM_KEYS[kind];
+  return pos(cp[k[settings.cmBasis]]) ?? pos(cp[k.trend]) ?? (kind === 'main' ? pos(cp.averageSellPrice) : pos(cp.reverseHoloSell));
+}
+function pkmRows(c, variants) {
+  const tp = c.tcgplayer?.prices || {}, cp = c.cardmarket?.prices || {};
+  const base = {
+    game: 'pkm', name: c.name, set: c.set?.name, setCode: (c.set?.ptcgoCode || c.set?.id || '').toUpperCase(), number: c.number,
+    rarity: c.rarity, thumb: c.images?.small, img: c.images?.large || c.images?.small,
+    cmUrl: c.cardmarket?.url, tcgUrl: c.tcgplayer?.url, infoUrl: null,
+  };
+  const out = [];
+  let tcg = null, label = null;
+  for (const [k, l] of TCG_MAIN) { const v = pickTcg(tp[k]); if (v != null) { tcg = v; label = l; break; } }
+  const cm = pickCm(cp, 'main');
+  if (!label) label = /holo|rare\b|ex|gx|vmax|v$/i.test(c.rarity || '') ? 'Holo' : 'Normal';
+  if (cm != null || tcg != null) out.push({ ...base, variant: label, cm, tcg });
+  if (variants) {
+    const tr = pickTcg(tp.reverseHolofoil), cr = pickCm(cp, 'rev');
+    if (tr != null || cr != null) out.push({ ...base, variant: 'Reverse Holo', cm: cr, tcg: tr });
+  }
+  return out;
+}
+const buildRows = (it, variants) => it.game === 'mtg' ? mtgRows(it.card, variants) : pkmRows(it.card, variants);
+
+function netProfit(cmEUR, tcgUSD) {
+  const s = settings;
+  const buyEUR = (tcgUSD * (1 + s.salesTax / 100) + s.shipUSD) / fx() * (1 + s.fxFee / 100);
+  const landed = buyEUR * (1 + s.duty / 100) * (1 + s.vat / 100);
+  return cmEUR * (1 - s.cmFee / 100) - landed;
+}
+function enrich(r) {
+  const tcgEUR = r.tcg != null ? r.tcg / fx() : null;
+  const both = r.cm != null && tcgEUR != null;
+  return {
+    ...r, tcgEUR,
+    diff: both ? r.cm - tcgEUR : null,
+    pct: both && tcgEUR > 0 ? (r.cm / tcgEUR - 1) * 100 : null,
+    profit: both ? netProfit(r.cm, r.tcg) : null,
+  };
+}
+
+/* ---------------- table ---------------- */
+const COLS = [
+  { k: 'img', t: '', sort: false },
+  { k: 'name', t: 'Karte' },
+  { k: 'set', t: 'Set' },
+  { k: 'variant', t: 'Variante' },
+  { k: 'cm', t: 'Cardmarket', num: true },
+  { k: 'tcg', t: 'TCGplayer', num: true },
+  { k: 'tcgEUR', t: 'TCGplayer in €', num: true },
+  { k: 'diff', t: 'Differenz', num: true },
+  { k: 'pct', t: 'CM vs. TCG', num: true },
+  { k: 'profit', t: 'Netto nach Import', num: true },
+  { k: 'links', t: 'Links', sort: false },
+];
+const signCls = v => v == null ? '' : v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const pillCls = v => v == null ? '' : v >= 30 ? 'hot' : v > 0 ? 'up' : 'down';
+
+class ResultTable {
+  constructor(el, opts) {
+    this.el = el; this.opts = opts; this.items = []; this.lastRows = [];
+    this.sortKey = opts.sortKey; this.sortDir = -1;
+    el.addEventListener('click', e => {
+      if (e.target.closest('.csv')) return exportCSV(this.lastRows);
+      const th = e.target.closest('th[data-k]');
+      if (!th) return;
+      const k = th.dataset.k;
+      if (this.sortKey === k) this.sortDir *= -1;
+      else { this.sortKey = k; this.sortDir = COLS.find(c => c.k === k).num ? -1 : 1; }
+      this.render();
+    });
+  }
+  set(items) { this.items = items; this.render(); }
+  rows() {
+    const variants = this.opts.variants();
+    let rows = this.items.flatMap(it => buildRows(it, variants)).map(enrich);
+    if (this.opts.filter) rows = rows.filter(this.opts.filter);
+    const k = this.sortKey, d = this.sortDir;
+    rows.sort((a, b) => {
+      const x = a[k], y = b[k];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'de')) * d;
+    });
+    return rows;
+  }
+  render() {
+    if (!this.items.length) { this.el.innerHTML = ''; this.lastRows = []; return; }
+    const rows = this.lastRows = this.rows();
+    const LIMIT = 500;
+    const head = COLS.map(c => {
+      const sorted = this.sortKey === c.k;
+      return `<th ${c.sort === false ? '' : `data-k="${c.k}"`} class="${c.num ? 'num' : ''} ${sorted ? 'sorted' : ''}">${c.t}${sorted ? (this.sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+    }).join('');
+    const body = rows.slice(0, LIMIT).map(r => `<tr>
+      <td>${r.thumb ? `<img class="thumb" loading="lazy" src="${esc(r.thumb)}" data-large="${esc(r.img)}" alt="">` : ''}</td>
+      <td><div class="cname"><span class="badge ${r.game}">${r.game === 'mtg' ? 'MTG' : 'PKM'}</span>${esc(r.name)}</div><div class="sub">${esc(r.rarity || '')}</div></td>
+      <td><div>${esc(r.set)}</div><div class="sub">${esc(r.setCode)} #${esc(r.number)}</div></td>
+      <td>${esc(r.variant)}</td>
+      <td class="num">${fmtEUR(r.cm)}</td>
+      <td class="num">${fmtUSD(r.tcg)}</td>
+      <td class="num">${fmtEUR(r.tcgEUR)}</td>
+      <td class="num ${signCls(r.diff)}">${fmtEUR(r.diff)}</td>
+      <td class="num">${r.pct == null ? '–' : `<span class="pill ${pillCls(r.pct)}">${fmtPct(r.pct)}</span>`}</td>
+      <td class="num ${signCls(r.profit)}">${fmtEUR(r.profit)}</td>
+      <td class="links">
+        ${r.cmUrl ? `<a href="${esc(r.cmUrl)}" target="_blank" rel="noopener">CM</a>` : ''}
+        ${r.tcgUrl ? `<a href="${esc(r.tcgUrl)}" target="_blank" rel="noopener">TCG</a>` : ''}
+        ${r.infoUrl ? `<a href="${esc(r.infoUrl)}" target="_blank" rel="noopener">Info</a>` : ''}
+      </td></tr>`).join('');
+    const empty = rows.length ? '' : `<tr><td colspan="${COLS.length}" class="muted" style="text-align:center;padding:24px">${esc(this.opts.emptyText || 'Keine Treffer.')}</td></tr>`;
+    this.el.innerHTML =
+      `<div class="tableinfo"><span>${rows.length} Einträge${rows.length > LIMIT ? ` (zeige die ersten ${LIMIT})` : ''} · Klick auf Spaltenkopf sortiert</span>
+       <button class="small csv" ${rows.length ? '' : 'disabled'}>CSV exportieren</button></div>
+       <div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}${empty}</tbody></table></div>`;
+  }
+}
+
+function exportCSV(rows) {
+  const n = v => v == null ? '' : v.toFixed(2).replace('.', ',');
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const lines = [['Spiel', 'Karte', 'Set', 'Nr', 'Variante', 'Cardmarket EUR', 'TCGplayer USD', 'TCGplayer EUR', 'Differenz EUR', 'CM vs TCG %', 'Netto EUR', 'Cardmarket', 'TCGplayer'].join(';')];
+  for (const r of rows) lines.push([r.game, q(r.name), q(r.set), q(r.number), r.variant, n(r.cm), n(r.tcg), n(r.tcgEUR), n(r.diff), n(r.pct), n(r.profit), q(r.cmUrl), q(r.tcgUrl)].join(';'));
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kartenpreise-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------------- search tab ---------------- */
+const searchTable = new ResultTable($('#searchResults'), {
+  sortKey: 'cm', variants: () => $('#searchVariants').checked, emptyText: 'Keine Preise gefunden.',
+});
+$('#searchVariants').addEventListener('change', () => searchTable.render());
+function setStatus(el, text, kind = '') { el.textContent = text; el.className = 'status ' + kind; }
+
+$('#searchForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const game = $('#searchGame').value, term = $('#searchTerm').value.trim();
+  if (!term) return;
+  const st = $('#searchStatus');
+  setStatus(st, game === 'pkm' ? 'Suche… (die Pokémon-API braucht manchmal ein paar Sekunden)' : 'Suche…', 'busy');
+  try {
+    let res;
+    if (game === 'mtg') res = await scryfallSearch(`${term} lang:en game:paper`, { maxPages: 3 });
+    else res = await pkmCards(pkmNameQuery(term), { maxPages: 2 });
+    const items = res.cards.map(card => ({ game, card }));
+    setStatus(st, items.length ? `${res.total} Karten gefunden${res.total > items.length ? `, zeige ${items.length}` : ''}.` : 'Keine Karten gefunden.');
+    searchTable.set(items);
+  } catch (err) {
+    setStatus(st, 'Fehler: ' + err.message, 'err');
+  }
+});
+
+/* ---------------- arbitrage tab ---------------- */
+let arbItems = [];
+let stopRequested = false;
+const arbTable = new ResultTable($('#arbResults'), {
+  sortKey: 'profit',
+  variants: () => $('#arbVariants').checked,
+  emptyText: 'Keine Karte erfüllt die Filter – Filter lockern oder mehr scannen.',
+  filter: r => {
+    if (r.cm == null || r.tcg == null) return false;
+    const g = $('#fGame').value;
+    if (g && r.game !== g) return false;
+    if (r.pct < num('#fMinPct', -Infinity)) return false;
+    if (r.cm < num('#fMinCm', 0)) return false;
+    if (r.diff < num('#fMinDiff', -Infinity)) return false;
+    if ($('#fOnlyProfit').checked && !(r.profit > 0)) return false;
+    return true;
+  },
+});
+['#fMinPct', '#fMinCm', '#fMinDiff', '#fGame', '#fOnlyProfit', '#arbVariants'].forEach(s =>
+  $(s).addEventListener('input', debounce(() => arbTable.render())));
+
+function scanning(on) {
+  $('#mtgScan').disabled = on; $('#pkmScan').disabled = on; $('#arbStop').disabled = !on;
+  if (on) stopRequested = false;
+}
+$('#arbStop').addEventListener('click', () => { stopRequested = true; });
+$('#arbClear').addEventListener('click', () => { arbItems = []; arbTable.set(arbItems); setStatus($('#arbStatus'), ''); });
+
+function addArbItems(game, cards) {
+  // replace previous results for the same card ids, keep others
+  const ids = new Set(cards.map(c => c.id));
+  arbItems = arbItems.filter(i => !(i.game === game && ids.has(i.card.id))).concat(cards.map(card => ({ game, card })));
+  arbTable.set(arbItems);
+}
+
+$('#mtgScan').addEventListener('click', async () => {
+  const st = $('#arbStatus');
+  const min = num('#mtgMin', 1), max = num('#mtgMax', 0), pages = Math.max(1, num('#mtgPages', 10));
+  let q = `lang:en game:paper usd>0 eur>=${min}`;
+  if (max > 0) q += ` eur<=${max}`;
+  const extra = $('#mtgExtra').value.trim();
+  if (extra) q += ' ' + extra;
+  scanning(true);
+  setStatus(st, 'Magic: starte Scan…', 'busy');
+  try {
+    const { cards, total } = await scryfallSearch(q, {
+      maxPages: pages, stop: () => stopRequested,
+      onPage: (p, n, t) => {
+        setStatus(st, `Magic: Seite ${p}/${Math.min(pages, Math.ceil(t / 175))} – ${n} von ${t} Karten geladen…`, 'busy');
+      },
+    });
+    addArbItems('mtg', cards);
+    setStatus(st, `Magic: ${cards.length} von ${total} Karten gescannt${stopRequested ? ' (gestoppt)' : ''}.`);
+  } catch (err) {
+    setStatus(st, 'Fehler beim Magic-Scan: ' + err.message, 'err');
+  } finally { scanning(false); }
+});
+
+/* Pokémon set picker */
+let pkmSets = [];
+let setsLoaded = false;
+async function loadSets() {
+  if (setsLoaded) return;
+  setsLoaded = true;
+  try {
+    const j = await getJSON(PKM + '/sets?' + new URLSearchParams({ orderBy: '-releaseDate', pageSize: 250, select: 'id,name,series,releaseDate,total' }), pkmHeaders());
+    pkmSets = j.data || [];
+    renderSets();
+  } catch (err) {
+    setsLoaded = false;
+    $('#setList').innerHTML = `<span class="neg">Sets konnten nicht geladen werden: ${esc(err.message)}</span> <button class="small" id="setsRetry" type="button">Nochmal</button>`;
+    $('#setsRetry').addEventListener('click', loadSets);
+  }
+}
+function renderSets() {
+  const f = $('#setFilter').value.trim().toLowerCase();
+  const checked = new Set($$('#setList input:checked').map(i => i.value));
+  $('#setList').innerHTML = pkmSets
+    .filter(s => !f || `${s.name} ${s.series} ${s.id}`.toLowerCase().includes(f))
+    .map(s => `<label><input type="checkbox" value="${esc(s.id)}" ${checked.has(s.id) ? 'checked' : ''}>
+      <span>${esc(s.name)} <span class="muted">· ${esc(s.series)}</span></span>
+      <span class="d">${esc(s.total)} Karten · ${esc((s.releaseDate || '').slice(0, 4))}</span></label>`).join('')
+    || '<span class="muted">Keine Sets gefunden.</span>';
+  updateSetCount();
+}
+function updateSetCount() {
+  const n = $$('#setList input:checked').length;
+  $('#setCount').textContent = n ? `${n} Set(s) ausgewählt` : 'Bitte Sets auswählen';
+}
+$('#setFilter').addEventListener('input', debounce(renderSets, 150));
+$('#setList').addEventListener('change', updateSetCount);
+$('#setsNone').addEventListener('click', () => { $$('#setList input').forEach(i => i.checked = false); updateSetCount(); });
+$('#setsNewest').addEventListener('click', () => {
+  $('#setFilter').value = ''; renderSets();
+  $$('#setList input').forEach((i, idx) => i.checked = idx < 3);
+  updateSetCount();
+});
+
+$('#pkmScan').addEventListener('click', async () => {
+  const st = $('#arbStatus');
+  const ids = $$('#setList input:checked').map(i => i.value);
+  if (!ids.length) { setStatus(st, 'Bitte zuerst mindestens ein Pokémon-Set auswählen.', 'err'); return; }
+  const extra = $('#pkmExtra').value.trim();
+  scanning(true);
+  let count = 0;
+  try {
+    for (let i = 0; i < ids.length && !stopRequested; i++) {
+      const name = pkmSets.find(s => s.id === ids[i])?.name || ids[i];
+      setStatus(st, `Pokémon: Set ${i + 1}/${ids.length} (${name}) wird geladen…`, 'busy');
+      const { cards } = await pkmCards(`set.id:${ids[i]}${extra ? ' ' + extra : ''}`, { maxPages: 5, stop: () => stopRequested });
+      count += cards.length;
+      addArbItems('pkm', cards);
+    }
+    setStatus(st, `Pokémon: ${count} Karten aus ${ids.length} Set(s) gescannt${stopRequested ? ' (gestoppt)' : ''}.`);
+  } catch (err) {
+    setStatus(st, 'Fehler beim Pokémon-Scan: ' + err.message, 'err');
+  } finally { scanning(false); }
+});
+
+/* ---------------- tabs, preview, init ---------------- */
+$$('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+  $$('nav.tabs button').forEach(x => x.classList.toggle('active', x === b));
+  $$('main > section').forEach(s => s.hidden = s.id !== 'tab-' + b.dataset.tab);
+  if (b.dataset.tab === 'arb') loadSets();
+}));
+
+const preview = $('#preview');
+document.addEventListener('mouseover', e => {
+  const t = e.target.closest && e.target.closest('img.thumb');
+  if (!t) return;
+  preview.src = t.dataset.large || t.src;
+  preview.hidden = false;
+});
+document.addEventListener('mousemove', e => {
+  if (preview.hidden) return;
+  const w = 250, h = 350;
+  let x = e.clientX + 24, y = e.clientY - h / 2;
+  if (x + w > innerWidth) x = e.clientX - w - 24;
+  y = Math.max(8, Math.min(y, innerHeight - h - 8));
+  preview.style.left = x + 'px'; preview.style.top = y + 'px';
+});
+document.addEventListener('mouseout', e => { if (e.target.closest && e.target.closest('img.thumb')) preview.hidden = true; });
+
+function rerenderAll() { searchTable.render(); arbTable.render(); }
+
+$('#fxRate').value = fxRate.toFixed(4);
+loadFx();
+</script>
+</body>
+</html>
